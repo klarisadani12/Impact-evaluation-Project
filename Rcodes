@@ -27,8 +27,7 @@ library(xts)
 library(zoo)
 
 
-`data_project.(1)` <- read.csv2("C:/Users/Mora_Menta/Downloads/data_project (1).csv")
-View(`data_project.(1)`)
+
 
 #keeping the variables used for the analysis
 
