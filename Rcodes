@@ -27,7 +27,14 @@ library(xts)
 library(zoo)
 
 
+`impactevaluation_project.(1)` <- read.csv2("C:/Users/Dani_Klarisa/Downloads/impactevaluation_project (1).csv")
+View(`impactevaluation_project.(1)`)
 
+#keeping the variables used for the analysis
+
+df = `impactevaluation_project.(1)`
+
+ls(df)
 
 #keeping the variables used for the analysis
 
@@ -49,7 +56,7 @@ df$labour_right <- df$X4.8.Fundamental.labor.rights.are.effectively.guaranteed
 df$final_score <- df$WJP.Rule.of.Law.Index..Overall.Score
 df$freedom_choice <- df$X4.6.Freedom.from.arbitrary.interference.with.privacy.is.effectively.guaranteed
 df$freedom_assembly <- df$X4.7.Freedom.of.assembly.and.association.is.effectively.guaranteed
-df$Country <- df$�.�Country
+df$Country <- df$?.?Country
 df$Year <- df$Year
 df$Region <- df$Region
 
