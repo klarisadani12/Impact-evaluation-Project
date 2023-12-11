@@ -1,1 +1,241 @@
+title: "R codes"
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading packages
+
+```{r}
+library(ggplot2)
+library('tidyverse')
+library('haven')
+library('magrittr')
+library('dplyr')
+library(ggfortify)
+library(haven)
+library(stargazer)
+library(estimatr)
+library(modelsummary)
+library(cowplot)
+library(xts)
+library(zoo)
+library(fixest)
+```
+
+
+
+```{r}
+# Importing the data
+
+Impactevaluation_project <- read.csv2("C:/Users/klarisadani/Desktop/data_project.csv")
+
+#keeping the variables used for the analysis
+
+df = Impactevaluation_project
+
+ls(df)
+```
+
+
+```{r}
+df$fundamentalrights <- df$Fundamental.Rights
+df$civicpart <- df$Civic.participation
+df$equal_treat <- df$Equal.treatment.and.absence.of.discrimination
+df$right_to_life <- df$The.right.to.life.and.security.of.the.person.is.effectively.guaranteed
+df$process <- df$Due.process.of.the.law.and.rights.of.the.accused
+df$freedom_opinion <- df$Freedom.of.opinion.and.expression.is.effectively.guaranteed
+df$freedom_belief <- df$Freedom.of.opinion.and.expression.is.effectively.guaranteed
+df$freedom_opinion <- df$Freedom.of.opinion.and.expression.is.effectively.guaranteed
+df$freedom_belief <- df$Freedom.of.belief.and.religion.is.effectively.guaranteed
+df$labour_right <- df$Fundamental.labor.rights.are.effectively.guaranteed
+df$final_score <- df$WJP.Rule.of.Law.Index..Overall.Score
+df$freedom_choice <- df$Freedom.from.arbitrary.interference.with.privacy.is.effectively.guaranteed
+df$freedom_assembly <- df$Freedom.of.assembly.and.association.is.effectively.guaranteed
+df$Country <- df$Country
+df$Year <- df$Year
+df$Region <- df$Region
+my_data = df
+```
+
+
+```{r}
+# Convert variable of interest from char into numeric format
+my_data$freedom_assembly<-as.numeric(my_data$freedom_assembly)
+my_data$freedom_belief<-as.numeric(my_data$freedom_belief)
+my_data$freedom_choice<-as.numeric(my_data$freedom_choice)
+my_data$freedom_opinion<-as.numeric(my_data$freedom_opinion)
+my_data$fundamentalrights<-as.numeric(my_data$fundamentalrights)
+my_data$civicpart<-as.numeric(my_data$civicpart)
+my_data$equal_treat<-as.numeric(my_data$equal_treat)
+my_data$right_to_life<-as.numeric(my_data$right_to_life)
+my_data$process<-as.numeric(my_data$process)
+my_data$labour_right<-as.numeric(my_data$labour_right)
+my_data$final_score<-as.numeric(my_data$final_score)
+```
+
+
+```{r}
+my_data$avg_freedom <- (my_data$freedom_assembly + my_data$freedom_belief + my_data$freedom_choice + my_data$freedom_opinion)/4
+my_data$log_avg_freedom <- log(my_data$avg_freedom)
+
+filtered <- df[which(df$Year==2015),]
+model <- lm(filtered$civicpart ~ filtered$labour_right)
+summary(model)
+```
+
+
+```{r}
+filtered <- my_data[which(my_data$Year==2015),]
+filtered2 <-my_data[which(my_data$Year==2021),]
+filtered$avg_freedom15 <- (filtered$freedom_assembly + filtered$freedom_belief + filtered$freedom_choice + filtered$freedom_opinion)/4 
+filtered2$avg_freedom21 <- (filtered2$freedom_assembly + filtered2$freedom_belief + filtered2$freedom_choice + filtered2$freedom_opinion)/4
+
+
+filtered$lnavg_free15 <- log(filtered$avg_freedom15)
+filtered2$lnavg_free21 <- log(filtered2$avg_freedom21)
+
+filtered$avg_civi15 <- mean(filtered$civicpart)
+filtered2$avg_civi21 <- mean(filtered2$civicpart)
+filtered$lnavg_civi15 <- log(filtered$avg_civi15)
+filtered2$lnavg_civi21 <- log(filtered2$avg_civi21)
+View(filtered)
+
+lm = lm(avg_civi15 ~ avg_freedom15 + filtered$fundamentalrights + filtered$right_to_life + filtered$process + filtered$labour_right, data = filtered)
+summary(lm)
+```
+
+
+```{r}
+lm2 = lm(avg_civi21 ~ avg_freedom21 + filtered2$fundamentalrights + filtered2$right_to_life + filtered2$process + filtered2$labour_right, data = filtered2)
+summary(lm2)
+```
+
+
+```{r}
+lm3 = lm(filtered$civicpart ~ filtered$freedom_choice + filtered$freedom_assembly + filtered$freedom_belief + filtered$freedom_opinion, data = filtered)
+summary(lm3)
+```
+
+```{r}
+my_data$caryear <- as.character(my_data$Year)
+my_data$num_year <- as.numeric(my_data$caryear)
+na.omit(my_data$num_year)
+
+filtered3 <- my_data[which(my_data$num_year==2015 | my_data$num_year==2021),]
+
+
+library(dplyr)
+
+filtered3 <- filtered3 %>%
+  group_by(Country) %>%
+  mutate(balanced = as.numeric(n() == 2)) %>%
+  ungroup()
+
+filtered3 <- filtered3 %>%
+  mutate(
+    after = ifelse(num_year == 2021, 1, 0),
+    before = ifelse(num_year == 2015, 1, 0)
+  )
+
+filtered3 <- filtered3 %>%
+  arrange(Country, Year) %>%
+  group_by(Country) %>%
+  mutate(
+    treatment = ifelse(before == 1, before, 0), na.rm = TRUE
+  ) %>%
+  ungroup()
+```
+
+
+```{r}
+filtered3$avg_civi <- mean(filtered3$civicpart)
+filtered3$ln_avgcivi <- log(filtered3$avg_civi)
+
+filtered3 <- filtered3 %>%
+  arrange(Country, Year) %>%
+  group_by(Country) %>%
+  mutate(
+    civicpart_bef = ifelse(before == 1, civicpart, NA)
+  ) %>%
+  ungroup()
+```
+
+
+```{r}
+formula <- as.formula(ln_avgcivi ~ treatment*after -1)
+fd <- feols(formula, weights = filtered3$civicpart_bef, data = filtered3 , cluster = "Country")
+summary(fd)
+```
+
+
+```{r}
+formula2 <- as.formula(ln_avgcivi ~ (treatment + log_avg_freedom)*after)
+fd <- feols(formula, weights = filtered3$civicpart_bef, data = filtered3 , cluster = "Country")
+summary(fd)
+```
+
+
+```{r}
+filtered3 %>%
+  group_by(Year, before, after) %>%
+  summarise(n(), sum(civicpart), mean(civicpart))
+
+filtered3 %>%
+  group_by(Year, treatment) %>%
+  summarise(n(), sum(civicpart), mean(civicpart))
+
+filtered3 %>%
+  group_by(Year, balanced) %>%
+  summarise(n(), sum(civicpart), mean(civicpart))
+
+filtered3 %>%
+  group_by(Year, Region) %>%
+  summarise(n(), sum(civicpart), mean(civicpart))
+
+```
+
+
+```{r}
+# Convert Civic.participation to numeric variable
+data_project<-df
+data_project$Civic.participation<-as.numeric(as.character(data_project$Civic.participation))
+
+# Summary of Civic.participation by year and country
+library(dplyr)
+plotdata <- data_project %>% group_by(Year, Country) %>% 
+  summarise(Civic_participation=mean(Civic.participation, na.rm = TRUE))
+plotdata
+```
+
+
+```{r}
+# Selecting countries of interest
+
+selected_countries <- c("Australia", "China", "Hong Kong SAR. China", "Indonesia", "Japan", "Korea. Rep.", "Malaysia", "Mongolia", "Myanmar", "New Zealand", "Philippines", "Singapore", "Thailand", "Vietnam")
+
+filtered_data <- plotdata %>%
+  filter(Country %in% selected_countries)
+
+ggplot(filtered_data, aes(x = Year, y = Civic_participation)) +
+  geom_line() +
+  labs(title = "Civic Participation Over Years",
+       x = "Year",
+       y = "Civic Participation") +
+  scale_x_continuous(breaks = seq(2013, 2022, 1), labels = seq(2013, 2022, 1))+
+  facet_wrap(~Country)
+```
+
+```{r}
+ggplot(data_project,
+       aes(x = Civic.participation,
+           y = ..count.. / sum(..count..))) +
+  geom_bar(fill="blue") +
+  labs(x = "Civic participation",
+       y = "Percent") +
+  scale_y_continuous(labels = scales::percent)
+```
+
 
